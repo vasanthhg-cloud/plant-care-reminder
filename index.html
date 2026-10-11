@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verdant — Plant Care Reminder</title>
+<meta name="description" content="A plant care reminder application that generates timely notifications for watering, fertilizing and pruning.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f3ec;
+    --bg-tint:#efeadd;
+    --surface:#fffdf8;
+    --surface-2:#fbf8f1;
+    --border:rgba(31,42,36,.10);
+    --border-strong:rgba(31,42,36,.18);
+    --ink:#1e2a23;
+    --ink-soft:#41544a;
+    --ink-dim:#7b8c81;
+    --leaf:#3f6b34;
+    --leaf-bright:#4d7c0f;
+    --leaf-tint:#e6edda;
+    --terracotta:#bb4d20;
+    --terracotta-tint:#f6e3d8;
+    --amber:#a86a12;
+    --amber-tint:#f7ecd6;
+    --sky:#2f6b73;
+    --sky-tint:#dfeaeb;
+    --danger:#b1361f;
+    --shadow-sm:0 1px 2px rgba(31,42,36,.05), 0 2px 6px rgba(31,42,36,.05);
+    --shadow-md:0 4px 14px rgba(31,42,36,.08), 0 1px 3px rgba(31,42,36,.06);
+    --shadow-lg:0 18px 44px rgba(31,42,36,.14);
+    --radius:16px;
+    --font-head:'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-body:'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;z-index:-1;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(101,163,13,.10), transparent 60%),
+      radial-gradient(700px 460px at 96% 4%, rgba(187,77,32,.07), transparent 62%),
+      radial-gradient(900px 700px at 50% 120%, rgba(47,107,115,.06), transparent 60%);
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px 80px}
+  a{color:var(--leaf)}
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:26px 0 18px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:13px;min-width:0}
+  .brand .mark{
+    width:42px;height:42px;flex:none;border-radius:12px;
+    background:linear-gradient(150deg,var(--leaf),#2c4d24);
+    display:grid;place-items:center;box-shadow:var(--shadow-sm);
+  }
+  .brand h1{
+    font-family:var(--font-head);font-weight:600;font-size:1.5rem;
+    margin:0;letter-spacing:-.01em;line-height:1.1;
+  }
+  .brand .sub{
+    font-family:var(--font-mono);font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-dim);
+  }
+  .top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    font-family:var(--font-body);font-size:.86rem;font-weight:600;
+    border:1px solid var(--border-strong);background:var(--surface);
+    color:var(--ink);padding:9px 15px;border-radius:10px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:.16s ease;
+    box-shadow:var(--shadow-sm);white-space:nowrap;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+  .btn:active{transform:translateY(0)}
+  .btn.primary{background:var(--leaf);color:#fff;border-color:transparent}
+  .btn.primary:hover{background:#355c2b}
+  .btn.ghost{background:transparent;box-shadow:none}
+  .btn.ghost:hover{background:var(--bg-tint);box-shadow:none}
+  .btn.small{padding:6px 11px;font-size:.78rem;border-radius:8px}
+  .btn.tiny{padding:4px 9px;font-size:.72rem;border-radius:7px}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;transform:none}
+  .btn svg{width:15px;height:15px}
+
+  /* ---------- bell ---------- */
+  .bell{position:relative}
+  .bell .dot{
+    position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;
+    border-radius:9px;background:var(--terracotta);color:#fff;font-size:.66rem;
+    font-weight:700;display:grid;place-items:center;font-family:var(--font-mono);
+    border:2px solid var(--bg);
+  }
+  .bell .dot[hidden]{display:none}
+
+  /* ---------- stat band ---------- */
+  .stats{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 22px;
+  }
+  .stat{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:15px 16px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+  }
+  .stat .k{font-family:var(--font-mono);font-size:.63rem;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-dim)}
+  .stat .v{font-family:var(--font-head);font-size:2rem;font-weight:600;line-height:1.15;margin-top:2px}
+  .stat.overdue .v{color:var(--danger)}
+  .stat.today .v{color:var(--amber)}
+  .stat.upcoming .v{color:var(--leaf)}
+  .stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--border-strong)}
+  .stat.overdue::after{background:var(--danger)}
+  .stat.today::after{background:var(--amber)}
+  .stat.upcoming::after{background:var(--leaf)}
+  .stat.plants::after{background:var(--sky)}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:22px;align-items:start}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+
+  .section-label{
+    display:flex;align-items:center;gap:9px;
+    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--ink-dim);margin:0 0 12px;
+  }
+  .section-label .pip{width:8px;height:8px;border-radius:50%;background:var(--leaf)}
+  .section-label .pip.terra{background:var(--terracotta)}
+  .section-label .pip.sky{background:var(--sky)}
+
+  /* ---------- plant cards ---------- */
+  .plants{display:flex;flex-direction:column;gap:13px}
+  .plant{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 17px;box-shadow:var(--shadow-sm);transition:.18s ease;
+    animation:fadeUp .5s ease both;
+  }
+  .plant:hover{box-shadow:var(--shadow-md);border-color:var(--border-strong)}
+  .plant-head{display:flex;align-items:flex-start;gap:13px}
+  .avatar{
+    width:46px;height:46px;flex:none;border-radius:13px;display:grid;place-items:center;
+    font-family:var(--font-head);font-weight:600;font-size:1.15rem;color:#fff;
+    background:linear-gradient(150deg,#5f8a4f,#3f6b34);
+  }
+  .plant-id{flex:1;min-width:0}
+  .plant-id h3{font-family:var(--font-head);font-size:1.12rem;font-weight:600;margin:0;letter-spacing:-.01em}
+  .plant-id .meta{font-size:.78rem;color:var(--ink-dim);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+  .plant-id .meta span{display:inline-flex;align-items:center;gap:5px}
+  .plant-menu{display:flex;gap:6px}
+
+  .tasks{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+  @media(max-width:560px){.tasks{grid-template-columns:1fr}}
+  .task{
+    border:1px solid var(--border);border-radius:11px;padding:10px 11px;background:var(--surface-2);
+    position:relative;overflow:hidden;
+  }
+  .task .tl{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-dim);display:flex;align-items:center;gap:6px}
+  .task .tl svg{width:12px;height:12px;opacity:.8}
+  .task .due{font-weight:600;font-size:.86rem;margin-top:4px}
+  .task .bar{height:4px;border-radius:2px;background:var(--bg-tint);margin-top:8px;overflow:hidden}
+  .task .bar i{display:block;height:100%;border-radius:2px;background:var(--leaf);transition:width .5s ease}
+  .task.is-overdue{border-color:rgba(177,54,31,.35);background:var(--terracotta-tint)}
+  .task.is-overdue .bar i{background:var(--danger)}
+  .task.is-overdue .due{color:var(--danger)}
+  .task.is-today{border-color:rgba(168,106,18,.35);background:var(--amber-tint)}
+  .task.is-today .bar i{background:var(--amber)}
+  .task.is-today .due{color:var(--amber)}
+  .task .done-row{margin-top:9px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .task .last{font-size:.68rem;color:var(--ink-dim);font-family:var(--font-mono)}
+
+  /* ---------- panels ---------- */
+  .panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:18px;
+  }
+  .panel .ph{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2)}
+  .panel .ph h2{font-family:var(--font-head);font-size:1rem;font-weight:600;margin:0}
+  .panel .pb{padding:15px 16px}
+
+  /* ---------- forms ---------- */
+  label.fl{display:block;font-family:var(--font-mono);font-size:.63rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-dim);margin:0 0 5px}
+  input,select{
+    width:100%;font-family:var(--font-body);font-size:.88rem;color:var(--ink);
+    background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;
+    padding:9px 11px;transition:.15s ease;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--leaf);box-shadow:0 0 0 3px rgba(63,107,52,.14)}
+  .field{margin-bottom:12px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .hint{font-size:.7rem;color:var(--ink-dim);margin-top:5px}
+
+  /* ---------- reminder feed ---------- */
+  .feed{display:flex;flex-direction:column;gap:9px;max-height:420px;overflow-y:auto}
+  .feed::-webkit-scrollbar{width:8px}
+  .feed::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
+  .rem{
+    display:flex;gap:11px;padding:11px 12px;border-radius:11px;border:1px solid var(--border);
+    background:var(--surface-2);animation:fadeUp .4s ease both;
+  }
+  .rem .ico{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;
+    background:var(--leaf-tint);color:var(--leaf)}
+  .rem .ico.warn{background:var(--terracotta-tint);color:var(--danger)}
+  .rem .ico.soon{background:var(--amber-tint);color:var(--amber)}
+  .rem .ico svg{width:16px;height:16px}
+  .rem .body{flex:1;min-width:0}
+  .rem .body .t{font-size:.85rem;font-weight:600}
+  .rem .body .m{font-size:.75rem;color:var(--ink-dim)}
+  .rem .when{font-family:var(--font-mono);font-size:.62rem;color:var(--ink-dim);white-space:nowrap;padding-top:2px}
+  .empty{text-align:center;color:var(--ink-dim);font-size:.85rem;padding:22px 8px}
+  .empty svg{width:34px;height:34px;opacity:.35;margin-bottom:8px}
+
+  /* ---------- notification status ---------- */
+  .notif-status{display:flex;align-items:center;gap:9px;font-size:.8rem;color:var(--ink-soft);
+    padding:10px 12px;border-radius:10px;background:var(--bg-tint);margin-bottom:12px}
+  .notif-status .led{width:9px;height:9px;border-radius:50%;background:var(--ink-dim);flex:none}
+  .notif-status.on .led{background:var(--leaf-bright);box-shadow:0 0 0 3px rgba(77,124,15,.16)}
+  .notif-status.blocked .led{background:var(--danger);box-shadow:0 0 0 3px rgba(177,54,31,.14)}
+
+  /* ---------- toast ---------- */
+  #toasts{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;flex-direction:column;
+    gap:10px;max-width:340px}
+  @media(max-width:560px){#toasts{left:16px;right:16px;bottom:16px;max-width:none}}
+  .toast{
+    background:var(--ink);color:#f4f2ec;border-radius:13px;padding:13px 15px;
+    box-shadow:var(--shadow-lg);display:flex;gap:11px;align-items:flex-start;
+    animation:slideIn .35s cubic-bezier(.2,.9,.3,1.2) both;
+  }
+  .toast.out{animation:slideOut .3s ease forwards}
+  .toast .ti{width:30px;height:30px;flex:none;border-radius:9px;background:rgba(255,255,255,.12);
+    display:grid;place-items:center}
+  .toast .ti svg{width:16px;height:16px;color:#cfe0b8}
+  .toast .tt{font-weight:600;font-size:.86rem}
+  .toast .tm{font-size:.78rem;color:rgba(244,242,236,.72)}
+  .toast .x{margin-left:auto;cursor:pointer;opacity:.55;font-size:1.1rem;line-height:1;
+    padding:0 2px;background:none;border:none;color:inherit}
+  .toast .x:hover{opacity:1}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+  @keyframes slideOut{to{opacity:0;transform:translateX(30px)}}
+
+  /* ---------- modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(30,42,35,.42);backdrop-filter:blur(3px);
+    z-index:70;display:grid;place-items:center;padding:20px;animation:fadeUp .2s ease both}
+  .overlay[hidden]{display:none}
+  .modal{background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg);
+    width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border:1px solid var(--border)}
+  .modal .mh{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between}
+  .modal .mh h2{font-family:var(--font-head);font-size:1.2rem;margin:0;font-weight:600}
+  .modal .mb{padding:18px 20px}
+  .modal .mf{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;
+    background:var(--surface-2)}
+
+  footer{border-top:1px solid var(--border);margin-top:34px;padding-top:18px;
+    font-size:.76rem;color:var(--ink-dim);display:flex;justify-content:space-between;
+    gap:12px;flex-wrap:wrap;font-family:var(--font-mono)}
+
+  .pill{font-family:var(--font-mono);font-size:.62rem;padding:2px 8px;border-radius:20px;
+    background:var(--leaf-tint);color:var(--leaf);letter-spacing:.04em}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#e9f1dc" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 7-8 7Z"/>
+          <path d="M12 14c0-2.6-2-4.6-5.5-4.6C6.5 12.4 8.6 14 12 14Z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Verdant</h1>
+        <div class="sub">Plant Care Reminder</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost small" id="checkNow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+        Check now
+      </button>
+      <button class="btn small bell" id="bellBtn" title="Reminders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="dot" id="bellDot" hidden>0</span>
+      </button>
+      <button class="btn primary small" id="addPlantBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add plant
+      </button>
+    </div>
+  </header>
+
+  <!-- stats -->
+  <div class="stats">
+    <div class="stat plants"><div class="k">Plants tracked</div><div class="v" id="statPlants">0</div></div>
+    <div class="stat overdue"><div class="k">Overdue tasks</div><div class="v" id="statOverdue">0</div></div>
+    <div class="stat today"><div class="k">Due today</div><div class="v" id="statToday">0</div></div>
+    <div class="stat upcoming"><div class="k">Next 7 days</div><div class="v" id="statUpcoming">0</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: plants -->
+    <div>
+      <div class="section-label"><span class="pip"></span>Your plants &amp; care schedule</div>
+      <div class="plants" id="plantList"></div>
+    </div>
+
+    <!-- RIGHT: reminder engine -->
+    <aside>
+      <div class="panel">
+        <div class="ph">
+          <h2>Reminder engine</h2>
+          <span class="pill" id="engineTick">idle</span>
+        </div>
+        <div class="pb">
+          <div class="notif-status" id="notifStatus">
+            <span class="led"></span>
+            <span id="notifText">Browser notifications not enabled</span>
+          </div>
+          <button class="btn primary small" id="enableNotif" style="width:100%;justify-content:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            Enable browser notifications
+          </button>
+          <p class="hint" style="margin-top:10px">The engine scans every 30 seconds and once daily on load. A task is announced when it comes due or goes overdue — once per day per task.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <h2>Reminder feed</h2>
+          <button class="btn ghost tiny" id="clearFeed">Clear</button>
+        </div>
+        <div class="pb">
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h2>Data</h2></div>
+        <div class="pb">
+          <button class="btn small" id="seedBtn" style="width:100%;justify-content:center;margin-bottom:9px">Load sample garden</button>
+          <button class="btn small ghost" id="resetBtn" style="width:100%;justify-content:center">Reset all data</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>Verdant · plant-care reminder engine</span>
+    <span id="clock">—</span>
+  </footer>
+</div>
+
+<!-- toasts -->
+<div id="toasts" aria-live="polite"></div>
+
+<!-- add/edit modal -->
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="mh">
+      <h2 id="modalTitle">Add a plant</h2>
+      <button class="btn ghost tiny" id="closeModal" aria-label="Close">✕</button>
+    </div>
+    <div class="mb">
+      <input type="hidden" id="f_id">
+      <div class="field">
+        <label class="fl" for="f_name">Plant name</label>
+        <input id="f_name" placeholder="e.g. Monstera by the window" autocomplete="off">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label class="fl" for="f_species">Species</label>
+          <input id="f_species" placeholder="e.g. Monstera deliciosa" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="fl" for="f_location">Location</label>
+          <input id="f_location" placeholder="e.g. Living room" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="section-label" style="margin:16px 0 9px"><span class="pip sky"></span>Care intervals (days)</div>
+      <div class="row3">
+        <div class="field">
+          <label class="fl" for="f_water">Watering</label>
+          <input id="f_water" type="number" min="1" value="7">
+        </div>
+        <div class="field">
+          <label class="fl" for="f_fert">Fertilizing</label>
+          <input id="f_fert" type="number" min="1" value="30">
+        </div>
+        <div class="field">
+          <label class="fl" for="f_prune">Pruning</label>
+          <input id="f_prune" type="number" min="1" value="60">
+        </div>
+      </div>
+      <div class="field">
+        <label class="fl" for="f_last">Last cared for</label>
+        <select id="f_last">
+          <option value="0">Today (all tasks)</option>
+          <option value="1">Yesterday</option>
+          <option value="3">3 days ago</option>
+          <option value="7">1 week ago</option>
+          <option value="14">2 weeks ago</option>
+          <option value="30">1 month ago</option>
+        </select>
+        <p class="hint">Back-dates the last-done time so reminders can trigger realistically.</p>
+      </div>
+      <div class="field">
+        <label class="fl" for="f_notes">Notes</label>
+        <input id="f_notes" placeholder="Optional — e.g. rotate weekly" autocomplete="off">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn ghost" id="cancelModal">Cancel</button>
+      <button class="btn primary" id="savePlant">Save plant</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Verdant — plant care reminder application
+   - Persistent garden state (localStorage)
+   - Deterministic care-schedule computation
+   - Reminder engine: scans, de-duplicates, and dispatches
+     both in-app toasts and Web Notifications
+   ============================================================ */
+(function(){
+  'use strict';
+
+  var DAY = 86400000;
+  var STORE_KEY = 'verdant.state.v1';
+  var REMIND_KEY = 'verdant.reminded.v1';
+  var FEED_KEY   = 'verdant.feed.v1';
+  var SCAN_MS = 30000;
+
+  var CARE = {
+    water:  { label:'Watering',    verb:'Water',    short:'Water'    },
+    fert:   { label:'Fertilizing', verb:'Fertilize',short:'Fertilize'},
+    prune:  { label:'Pruning',     verb:'Prune',    short:'Prune'    }
+  };
+
+  /* ---------- date helpers (day granularity) ---------- */
+  function startOfDay(d){ var x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function today(){ return startOfDay(new Date()); }
+  function addDays(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function daysUntil(d){ return Math.round((startOfDay(d)-today())/DAY); }
+  function fmtDate(d){
+    return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  }
+  function fmtRelative(n){
+    if(n===0) return 'Today';
+    if(n===1) return 'Tomorrow';
+    if(n===-1) return 'Yesterday';
+    if(n<0)   return Math.abs(n)+' days ago';
+    return 'in '+n+' days';
+  }
+  function fmtTime(ts){
+    return new Date(ts).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
+  }
+
+  /* ---------- storage ---------- */
+  function load(key,fallback){
+    try{ var v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }
+    catch(e){ return fallback; }
+  }
+  function save(key,val){
+    try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){}
+  }
+
+  var state = load(STORE_KEY, { plants: [] });
+  var reminded = load(REMIND_KEY, {});   // { "plantId:taskType": "YYYY-MM-DD" }
+  var feed = load(FEED_KEY, []);         // [{id, plantId, type, title, msg, ts, level}]
+
+  function persist(){ save(STORE_KEY,state); save(REMIND_KEY,reminded); save(FEED_KEY,feed); }
+
+  /* ---------- schedule math ---------- */
+  function taskInfo(plant, type){
+    var t = plant.schedule[type];
+    var last = new Date(t.lastDone);
+    var next = addDays(last, t.everyDays);
+    var du = daysUntil(next);
+    var elapsed = Math.round((today()-startOfDay(last))/DAY);
+    var progress = Math.max(0, Math.min(100, (elapsed / t.everyDays) * 100));
+    return {
+      type:type, label:CARE[type].label, everyDays:t.everyDays, lastDone:last,
+      next:next, daysUntil:du, progress:progress,
+      overdue: du<0, dueToday: du===0, soon: du>0 && du<=2
+    };
+  }
+  function allTasks(plant){
+    return ['water','fert','prune'].map(function(t){ return taskInfo(plant,t); });
+  }
+
+  /* ---------- icons ---------- */
+  var ICON = {
+    water:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7 6.8 9.3a7 7 0 1 0 10.4 0L12 2.7Z"/></svg>',
+    fert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6"/><path d="M5 21h14"/><path d="M7 21V11l5-2 5 2v10"/></svg>',
+    prune:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+    bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'
+  };
+
+  function initials(name){
+    var parts = String(name).trim().split(/\s+/).slice(0,2);
+    return parts.map(function(p){return p[0]?p[0].toUpperCase():'';}).join('') || '?';
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ============================================================
+     REMINDER ENGINE
+     ============================================================ */
+  function todayKey(){ return today().toISOString().slice(0,10); }
+
+  // Scan the whole garden. Returns list of "reminder events" for
+  // tasks that are due/overdue and not yet announced today.
+  function scanGarden(force){
+    var events = [];
+    var tk = todayKey();
+    state.plants.forEach(function(plant){
+      allTasks(plant).forEach(function(task){
+        if(task.daysUntil > 0) return;              // not due yet
+        var key = plant.id + ':' + task.type;
+        if(!force && reminded[key] === tk) return;  // already announced today
+        events.push({ plant:plant, task:task, key:key });
+      });
+    });
+    return events;
+  }
+
+  function dispatch(force){
+    var events = scanGarden(force);
+    var tk = todayKey();
+    events.forEach(function(ev){
+      var level = ev.task.overdue ? 'warn' : 'soon';
+      var title, msg;
+      if(ev.task.overdue){
+        title = ev.plant.name + ' needs ' + CARE[ev.task.type].label.toLowerCase();
+        msg = CARE[ev.task.type].verb + ' now — overdue by ' + Math.abs(ev.task.daysUntil) + ' day' + (Math.abs(ev.task.daysUntil)===1?'':'s') + '.';
+      }else{
+        title = 'Time to ' + CARE[ev.task.type].verb.toLowerCase() + ': ' + ev.plant.name;
+        msg = CARE[ev.task.type].label + ' is due today.';
+      }
+      addFeed({ plantId:ev.plant.id, type:ev.task.type, title:title, msg:msg, level:level });
+      toast(title, msg, level);
+      webNotify(title, msg);
+      reminded[ev.key] = tk;
+    });
+    if(events.length){ persist(); }
+    render();
+    return events.length;
+  }
+
+  function addFeed(item){
+    feed.unshift({
+      id: 'r' + Date.now() + Math.random().toString(36).slice(2,6),
+      ts: Date.now(),
+      plantId: item.plantId, type: item.type,
+      title: item.title, msg: item.msg, level: item.level || 'soon'
+    });
+    if(feed.length > 60) feed.length = 60;
+    save(FEED_KEY, feed);
+  }
+
+  /* ---------- web notifications ---------- */
+  function notifSupported(){ return 'Notification' in window; }
+  function webNotify(title, body){
+    if(!notifSupported() || Notification.permission !== 'granted') return;
+    try{
+      var n = new Notification(title, {
+        body: body,
+        tag: 'verdant-' + title,
+        icon: 'data:image/svg+xml,' + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#3f6b34"/><path d="M32 50V30c0-9 7-16 18-16 0 11-7 16-18 16Zm0 6c0-6-5-10-13-10 0 8 5 12 13 12Z" fill="#e9f1dc"/></svg>'
+        )
+      });
+      n.onclick = function(){ window.focus(); n.close(); };
+    }catch(e){}
+  }
+
+  /* ---------- toasts ---------- */
+  var toastsEl = document.getElementById('toasts');
+  function toast(title, msg, level){
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML =
+      '<div class="ti">' + (level==='warn'
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="#f0b9a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>'
+        : ICON.bell) + '</div>' +
+      '<div style="flex:1;min-width:0"><div class="tt">' + esc(title) + '</div>' +
+      '<div class="tm">' + esc(msg) + '</div></div>' +
+      '<button class="x" aria-label="Dismiss">&times;</button>';
+    var x = el.querySelector('.x');
+    function close(){ el.classList.add('out'); setTimeout(function(){ el.remove(); }, 300); }
+    x.addEventListener('click', close);
+    toastsEl.appendChild(el);
+    setTimeout(close, 9000);
+  }
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+  function taskCard(plant, task){
+    var cls = task.overdue ? 'is-overdue' : (task.dueToday ? 'is-today' : '');
+    var dueText = task.overdue
+      ? ('Overdue ' + Math.abs(task.daysUntil) + 'd')
+      : (task.dueToday ? 'Due today' : ('in ' + task.daysUntil + 'd'));
+    return '' +
+      '<div class="task ' + cls + '">' +
+        '<div class="tl">' + ICON[task.type] + CARE[task.type].label + '</div>' +
+        '<div class="due">' + esc(dueText) + '</div>' +
+        '<div class="bar"><i style="width:' + task.progress.toFixed(0) + '%"></i></div>' +
+        '<div class="done-row">' +
+          '<span class="last">' + fmtRelative(task.daysUntil).toLowerCase() + '</span>' +
+          '<button class="btn tiny" data-done="' + plant.id + '" data-type="' + task.type + '">' +
+            CARE[task.type].verb +
+          '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function render(){
+    var list = document.getElementById('plantList');
+
+    if(!state.plants.length){
+      list.innerHTML =
+        '<div class="panel"><div class="pb">' +
+          '<div class="empty">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 7-8 7Z"/><path d="M12 14c0-2.6-2-4.6-5.5-4.6C6.5 12.4 8.6 14 12 14Z"/></svg>' +
+            '<div>No plants yet. Add one, or load the sample garden to see the reminder engine in action.</div>' +
+          '</div>' +
+        '</div></div>';
+    }else{
+      list.innerHTML = state.plants.map(function(p,i){
+        var tasks = allTasks(p);
+        var worst = tasks.reduce(function(a,t){ return t.daysUntil < a.daysUntil ? t : a; }, tasks[0]);
+        var badge = worst.overdue
+          ? '<span class="pill" style="background:var(--terracotta-tint);color:var(--danger)">attention</span>'
+          : (worst.dueToday ? '<span class="pill" style="background:var(--amber-tint);color:var(--amber)">due today</span>'
+                            : '<span class="pill">on track</span>');
+        return '' +
+        '<article class="plant" style="animation-delay:' + (i*45) + 'ms">' +
+          '<div class="plant-head">' +
+            '<div class="avatar" aria-hidden="true">' + esc(initials(p.name)) + '</div>' +
+            '<div class="plant-id">' +
+              '<h3>' + esc(p.name) + ' ' + badge + '</h3>' +
+              '<div class="meta">' +
+                (p.species ? '<span>' + esc(p.species) + '</span>' : '') +
+                (p.location ? '<span>· ' + esc(p.location) + '</span>' : '') +
+                (p.notes ? '<span>· ' + esc(p.notes) + '</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<div class="plant-menu">' +
+              '<button class="btn ghost tiny" data-edit="' + p.id + '">Edit</button>' +
+              '<button class="btn ghost tiny" data-del="' + p.id + '" aria-label="Delete">✕</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="tasks">' + tasks.map(function(t){ return taskCard(p,t); }).join('') + '</div>' +
+        '</article>';
+      }).join('');
+    }
+
+    // stats
+    var overdue=0, todayN=0, soon=0;
+    state.plants.forEach(function(p){
+      allTasks(p).forEach(function(t){
+        if(t.overdue) overdue++;
+        else if(t.dueToday) todayN++;
+        else if(t.daysUntil<=7) soon++;
+      });
+    });
+    document.getElementById('statPlants').textContent = state.plants.length;
+    document.getElementById('statOverdue').textContent = overdue;
+    document.getElementById('statToday').textContent = todayN;
+    document.getElementById('statUpcoming').textContent = soon;
+
+    var dot = document.getElementById('bellDot');
+    var active = overdue + todayN;
+    if(active>0){ dot.hidden=false; dot.textContent = active; } else { dot.hidden=true; }
+
+    renderFeed();
+    document.getElementById('clock').textContent =
+      new Date().toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+  }
+
+  function renderFeed(){
+    var el = document.getElementById('feed');
+    if(!feed.length){
+      el.innerHTML = '<div class="empty">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>' +
+        '<div>No reminders generated yet. Reminders appear here as tasks come due.</div></div>';
+      return;
+    }
+    el.innerHTML = feed.map(function(r){
+      var plant = state.plants.filter(function(p){return p.id===r.plantId;})[0];
+      var cls = r.level==='warn' ? 'warn' : (r.level==='soon' ? 'soon' : '');
+      var ago = Math.round((Date.now()-r.ts)/60000);
+      var when = ago<1 ? 'just now' : (ago<60 ? ago+'m ago' : Math.round(ago/60)+'h ago');
+      return '<div class="rem">' +
+        '<div class="ico ' + cls + '">' + (ICON[r.type]||ICON.bell) + '</div>' +
+        '<div class="body"><div class="t">' + esc(r.title) + '</div>' +
+        '<div class="m">' + esc(r.msg) + (plant? '' : '') + '</div></div>' +
+        '<div class="when">' + when + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ============================================================
+     ACTIONS
+     ============================================================ */
+  function uid(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+  function markDone(plantId, type){
+    var p = state.plants.filter(function(x){return x.id===plantId;})[0];
+    if(!p) return;
+    p.schedule[type].lastDone = new Date().toISOString();
+    delete reminded[plantId + ':' + type];   // allow a fresh reminder next cycle
+    persist(); render();
+    toast('Marked done', CARE[type].label + ' logged for ' + p.name + ' at ' + fmtTime(Date.now()) + '.', 'ok');
+  }
+
+  function deletePlant(id){
+    var p = state.plants.filter(function(x){return x.id===id;})[0];
+    if(!p) return;
+    if(!confirm('Delete "' + p.name + '" and its schedule?')) return;
+    state.plants = state.plants.filter(function(x){return x.id!==id;});
+    persist(); render();
+  }
+
+  /* ---------- modal ---------- */
+  var overlay = document.getElementById('overlay');
+  function openModal(plant){
+    document.getElementById('modalTitle').textContent = plant ? 'Edit plant' : 'Add a plant';
+    document.getElementById('f_id').value = plant ? plant.id : '';
+    document.getElementById('f_name').value = plant ? plant.name : '';
+    document.getElementById('f_species').value = plant ? (plant.species||'') : '';
+    document.getElementById('f_location').value = plant ? (plant.location||'') : '';
+    document.getElementById('f_notes').value = plant ? (plant.notes||'') : '';
+    document.getElementById('f_water').value = plant ? plant.schedule.water.everyDays : 7;
+    document.getElementById('f_fert').value  = plant ? plant.schedule.fert.everyDays : 30;
+    document.getElementById('f_prune').value = plant ? plant.schedule.prune.everyDays : 60;
+    overlay.hidden = false;
+    setTimeout(function(){ document.getElementById('f_name').focus(); }, 40);
+  }
+  function closeModal(){ overlay.hidden = true; }
+
+  function savePlant(){
+    var name = document.getElementById('f_name').value.trim();
+    if(!name){ document.getElementById('f_name').focus(); return; }
+    var id = document.getElementById('f_id').value;
+    var back = parseInt(document.getElementById('f_last').value,10) || 0;
+    var lastISO = addDays(new Date(), -back).toISOString();
+
+    var schedule = {
+      water:{ everyDays: Math.max(1,parseInt(document.getElementById('f_water').value,10)||7),  lastDone:lastISO },
+      fert: { everyDays: Math.max(1,parseInt(document.getElementById('f_fert').value,10)||30), lastDone:lastISO },
+      prune:{ everyDays: Math.max(1,parseInt(document.getElementById('f_prune').value,10)||60), lastDone:lastISO }
+    };
+
+    if(id){
+      var p = state.plants.filter(function(x){return x.id===id;})[0];
+      if(p){
+        p.name=name;
+        p.species=document.getElementById('f_species').value.trim();
+        p.location=document.getElementById('f_location').value.trim();
+        p.notes=document.getElementById('f_notes').value.trim();
+        p.schedule=schedule;
+        // a changed last-done time should re-arm reminders
+        delete reminded[p.id+':water']; delete reminded[p.id+':fert']; delete reminded[p.id+':prune'];
+      }
+    }else{
+      state.plants.push({
+        id: uid(), name:name,
+        species:document.getElementById('f_species').value.trim(),
+        location:document.getElementById('f_location').value.trim(),
+        notes:document.getElementById('f_notes').value.trim(),
+        schedule: schedule,
+        created: Date.now()
+      });
+    }
+    persist(); closeModal(); render();
+    dispatch(false);   // immediate check so a newly-overdue plant is announced
+  }
+
+  /* ---------- sample garden ---------- */
+  function seedGarden(){
+    var mk = function(name,species,loc,notes,w,f,pr,back){
+      var last = addDays(new Date(), -back).toISOString();
+      return { id:uid(), name:name, species:species, location:loc, notes:notes,
+        schedule:{ water:{everyDays:w,lastDone:last}, fert:{everyDays:f,lastDone:last}, prune:{everyDays:pr,lastDone:last} },
+        created:Date.now() };
+    };
+    state.plants = [
+      mk('Monstera','Monstera deliciosa','Living room','Rotate weekly', 7, 30, 60, 9),
+      mk('Snake Plant','Dracaena trifasciata','Bedroom','Drought tolerant', 14, 45, 90, 20),
+      mk('Basil','Ocimum basilicum','Kitchen sill','Pinch flowering tips', 3, 14, 21, 4),
+      mk('Fiddle Leaf Fig','Ficus lyrata','Study','Wipe leaves monthly', 10, 30, 75, 12),
+      mk('Peace Lily','Spathiphyllum','Hallway','Loves humidity', 5, 30, 60, 6)
+    ];
+    feed = []; reminded = {};
+    persist(); render();
+    toast('Sample garden loaded', state.plants.length + ' plants added with staggered schedules.', 'ok');
+    dispatch(true);
+  }
+
+  /* ============================================================
+     WIRE UP
+     ============================================================ */
+  document.getElementById('plantList').addEventListener('click', function(e){
+    var t = e.target.closest('button'); if(!t) return;
+    if(t.dataset.done) markDone(t.dataset.done, t.dataset.type);
+    else if(t.dataset.edit){ var p=state.plants.filter(function(x){return x.id===t.dataset.edit;})[0]; if(p) openModal(p); }
+    else if(t.dataset.del) deletePlant(t.dataset.del);
+  });
+
+  document.getElementById('addPlantBtn').addEventListener('click', function(){ openModal(null); });
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('cancelModal').addEventListener('click', closeModal);
+  document.getElementById('savePlant').addEventListener('click', savePlant);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) closeModal(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !overlay.hidden) closeModal(); });
+
+  document.getElementById('checkNow').addEventListener('click', function(){
+    var n = dispatch(true);
+    if(!n) toast('All caught up', 'No care tasks are due right now.', 'ok');
+  });
+
+  document.getElementById('seedBtn').addEventListener('click', function(){
+    if(state.plants.length && !confirm('Replace current plants with the sample garden?')) return;
+    seedGarden();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(!confirm('Delete all plants, reminders and history?')) return;
+    state.plants=[]; feed=[]; reminded={}; persist(); render();
+    toast('Reset complete', 'All garden data cleared.', 'ok');
+  });
+
+  document.getElementById('clearFeed').addEventListener('click', function(){
+    feed=[]; persist(); renderFeed();
+  });
+
+  document.getElementById('bellBtn').addEventListener('click', function(){
+    document.getElementById('feed').scrollIntoView({behavior:'smooth',block:'center'});
+  });
+
+  /* notification permission */
+  var nBtn = document.getElementById('enableNotif');
+  var nStatus = document.getElementById('notifStatus');
+  var nText = document.getElementById('notifText');
+  function refreshNotifUI(){
+    if(!notifSupported()){
+      nStatus.className='notif-status blocked';
+      nText.textContent='This browser does not support notifications — in-app reminders still work.';
+      nBtn.disabled=true; return;
+    }
+    var perm = Notification.permission;
+    if(perm==='granted'){
+      nStatus.className='notif-status on';
+      nText.textContent='Browser notifications enabled.';
+      nBtn.textContent='Send a test notification';
+      nBtn.disabled=false;
+    }else if(perm==='denied'){
+      nStatus.className='notif-status blocked';
+      nText.textContent='Notifications blocked — enable them in browser settings. In-app reminders still work.';
+      nBtn.disabled=true;
+    }else{
+      nStatus.className='notif-status';
+      nText.textContent='Browser notifications not enabled';
+      nBtn.disabled=false;
+    }
+  }
+  nBtn.addEventListener('click', function(){
+    if(!notifSupported()) return;
+    if(Notification.permission==='granted'){
+      webNotify('Verdant test reminder', 'Notifications are working. You will be reminded about plant care on time.');
+      toast('Test sent', 'A sample browser notification was dispatched.', 'ok');
+      return;
+    }
+    Notification.requestPermission().then(function(){
+      refreshNotifUI();
+      if(Notification.permission==='granted'){
+        webNotify('Verdant is watching your garden', 'You will now get reminders for watering, fertilizing and pruning.');
+      }
+    });
+  });
+
+  /* ---------- boot ---------- */
+  refreshNotifUI();
+  render();
+  dispatch(false);            // announce anything already due today
+
+  setInterval(function(){ dispatch(false); }, SCAN_MS);
+  setInterval(render, 60000); // keep relative times fresh
+
+  window.addEventListener('storage', function(e){
+    if(e.key===STORE_KEY){ state=load(STORE_KEY,{plants:[]}); render(); }
+  });
+
+  // expose a tiny API for debugging / embedding
+  window.Verdant = {
+    scan: scanGarden, dispatch: dispatch, state: function(){return state;},
+    addPlant: function(p){ state.plants.push(p); persist(); render(); }
+  };
+})();
+</script>
+</body>
+</html>
